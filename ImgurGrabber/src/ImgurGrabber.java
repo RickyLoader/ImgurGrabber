@@ -1,17 +1,15 @@
-/**
- * ImgurGrabber.java - Pulls all individual image URLs from an imgur.com album, can pull ~1000 links in <5 seconds.
- *
- * @author Ricky Loader
- * @version 1.0
- */
-
 import java.io.*;
 import java.util.Scanner;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.net.URL;
 
-
+/**
+ * ImgurGrabber.java - Pulls all individual image URLs from an imgur.com album, can pull ~1000 links in <5 seconds.
+ *
+ * @author Ricky Loader
+ * @version 1.0
+ */
 public class ImgurGrabber {
 
     /**
@@ -26,19 +24,25 @@ public class ImgurGrabber {
         System.out.println("Please enter an IMGUR album link to obtain image URLs from:\n");
         String desired = input.nextLine().replace(" ","");
 
-        /* Verfiy the URL is valid. */
+        /* Verify the URL is valid. */
         while (!isLink(desired, true)) {
             System.out.println("Invalid IMGUR url please try again:\n");
-            desired = input.nextLine();
+            System.out.println(desired);
+            desired = input.nextLine().replace(" ","");
         }
         input.close();
         System.out.println("\nFetching links...\n");
+
+        long startTime = System.currentTimeMillis();
 
         /* Pull the HTML from the URL. */
         String html = visitLink(desired);
 
         /* Find and create each image's URL from the HTML. */
-        findLinks(html);
+        int links = findLinks(html);
+
+        long endTime = System.currentTimeMillis();
+        System.out.println("\nFound "+ links + " images in " + (endTime-startTime) +"ms.");
     }
 
     /**
@@ -103,7 +107,7 @@ public class ImgurGrabber {
      *
      * @param html A String containing the HTML to be searched.
      */
-    private static void findLinks(String html) {
+    private static int findLinks(String html) {
 
         /* The album's images are stored in two blocks within the HTML, each beginning with this prefix. */
         String albumRegex = "\"count\":[0-9]+,\"images\":\\[";
@@ -141,5 +145,6 @@ public class ImgurGrabber {
                 System.out.println(url);
             }
         }
+        return unique.size();
     }
 }
