@@ -1,5 +1,5 @@
 /**
- * ImgurGrabber.java - Pulls all individual image URLs from an imgur.com album, can pull ~1000 links in <5 seconds
+ * ImgurGrabber.java - Pulls all individual image URLs from an imgur.com album, can pull ~1000 links in <5 seconds.
  *
  * @author Ricky Loader
  * @version 1.0
@@ -14,12 +14,17 @@ import java.net.URL;
 
 public class ImgurGrabber {
 
+    /**
+     * Prompts user for input of an imgur album URL and returns the direct image URLs of each image.
+     *
+     * @param args Command line input.
+     */
     public static void main(String[] args) {
 
         /* Take an imgur album URL as input. */
         Scanner input = new Scanner(System.in);
         System.out.println("Please enter an IMGUR album link to obtain image URLs from:\n");
-        String desired = input.nextLine();
+        String desired = input.nextLine().replace(" ","");
 
         /* Verfiy the URL is valid. */
         while (!isLink(desired, true)) {
@@ -34,7 +39,6 @@ public class ImgurGrabber {
 
         /* Find and create each image's URL from the HTML. */
         findLinks(html);
-
     }
 
     /**
@@ -45,20 +49,22 @@ public class ImgurGrabber {
      * @return A Boolean specifying whether the URL is correct or not.
      */
     private static boolean isLink(String url, boolean album) {
-
+        boolean result = false;
         /* REGEX for an imgur single image URL. */
         String linkFormat = "https://imgur.com/[a-zA-Z0-9]+";
 
         /* REGEX for an imgur album URL. */
         String albumFormat = "https://imgur.com/a/\\S+";
 
+        /* Use a map to find appropriate REGEX for given Boolean. */
         HashMap<Boolean, String> formats = new HashMap<>();
         formats.put(true, albumFormat);
         formats.put(false, linkFormat);
+
         if (url.matches(formats.get(album))) {
-            return true;
+            result = true;
         }
-        return false;
+        return result;
     }
 
     /**
@@ -76,11 +82,10 @@ public class ImgurGrabber {
             String line;
             while ((line = bufferedReader.readLine()) != null) {
 
-                /* Filter out a large amount of HTML. */
+                /* Filter out all HTML except the block containing image URLs. */
                 if (line.contains("\"hash\"")) {
                     html += line;
                 }
-
             }
             bufferedReader.close();
             return html;
@@ -92,9 +97,9 @@ public class ImgurGrabber {
 
     /**
      * Searches a String containing HTML for each individual image URL. imgur only stores the images
-     * currently visible on screen in standard HTML <img src= > tags, updating these as the page is scrolled. The
-     * images are instead stored as objects with attributes such as title, description, hash, etc. The hash attribute's
-     * value can be appended to an imgur prefix to obtain that image's individual URL.
+     * currently visible on screen in <img src= > tags. The images are stored as objects with attributes
+     * such as title, description, hash, etc. The hash attribute's value can be appended to an imgur prefix
+     * to obtain a direct URL to the image.
      *
      * @param html A String containing the HTML to be searched.
      */
@@ -104,12 +109,12 @@ public class ImgurGrabber {
         String albumRegex = "\"count\":[0-9]+,\"images\":\\[";
 
         /*
-         * Splitting on albumRegex produces 3 Strings, the HTML prior to the first occurrence, and two blocks
-         * of HTML containing the image objects of the album, these blocks are duplicated so only the first is needed.
+         * Splitting on albumRegex produces 3 Strings, the HTML prior to the first occurrence, and two duplicate
+         * blocks of HTML containing the image objects of the album (only the first is needed).
          */
         String album = html.split(albumRegex)[1];
 
-        /* Image objects are separated by this, splitting leaves each individual image object and some excess. */
+        /* Image objects are comma separated. */
         String[] imageObjects = album.split("},");
 
         ArrayList<String> unique = new ArrayList<>();
@@ -124,20 +129,17 @@ public class ImgurGrabber {
         for (String object : imageObjects) {
 
             /*
-             * Create the URL by removing the imageRegex which leaves the hash value and the remaining attributes,
-             * followed by splitting on the " which marks the end of the hash value. This leaves only the hash value
+             * Create the URL by removing the imageRegex which leaves the hash value and the remaining attributes.
+             * Split on quote marks the end of the hash value. This leaves the hash value
              * in the 0 position which can then be appended to the imgurPrefix to gain the image's URL.
              */
             String url = imgurPrefix + (object.replace(imageRegex, "").split("\"")[0]);
 
-            /* Verify both that the URL is not a duplicate and is a valid imgur link. */
+            /* Verify that the URL is not a duplicate and is a valid imgur link. */
             if (!unique.contains(url) && isLink(url, false)) {
                 unique.add(url);
                 System.out.println(url);
             }
         }
-
-
     }
-
 }
