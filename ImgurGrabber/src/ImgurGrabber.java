@@ -78,25 +78,21 @@ public class ImgurGrabber {
      * @return A String containing the HTML content found.
      */
     private static String visitLink(String desired) {
-        String html = "";
+        StringBuilder sb = new StringBuilder();
 
         try {
             URL url = new URL(desired);
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(url.openStream()));
             String line;
             while ((line = bufferedReader.readLine()) != null) {
-
-                /* Filter out all HTML except the block containing image URLs. */
-                if (line.contains("\"hash\"")) {
-                    html += line;
-                }
+                    sb.append(line);
             }
             bufferedReader.close();
-            return html;
+            return sb.toString();
         } catch (IOException e) {
             System.out.println("Unable to open URL");
         }
-        return html;
+        return sb.toString();
     }
 
     /**
