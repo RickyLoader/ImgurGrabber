@@ -5,7 +5,8 @@ import java.util.ArrayList;
 import java.net.URL;
 
 /**
- * ImgurGrabber.java - Pulls all individual image URLs from an imgur.com album, can pull ~1000 links in <5 seconds.
+ * ImgurGrabber.java - Pulls all individual image URLs from an imgur.com album, can pull ~1000 links in <5 seconds,
+ * also appends image extension to existing imgur URLs in a file for upload compatibility with lensdump.
  *
  * @author Ricky Loader
  * @version 1.0
@@ -19,30 +20,54 @@ public class ImgurGrabber {
      */
     public static void main(String[] args) {
 
-        /* Take an imgur album URL as input. */
+        /* Take an imgur album URL or file name as input. */
         Scanner input = new Scanner(System.in);
-        System.out.println("Please enter an IMGUR album link to obtain image URLs from:\n");
-        String desired = input.nextLine().replace(" ","");
+        System.out.println("\n1. Grab links from an IMGUR album:\n\n" +
+                "2. Append image file types to URLS in a text file:");
+        String desired = input.nextLine();
 
-        /* Verify the URL is valid. */
-        while (!isLink(desired, true)) {
-            System.out.println("Invalid IMGUR url please try again:\n");
-            System.out.println(desired);
-            desired = input.nextLine().replace(" ","");
+        /* Wait for a valid option. */
+        while(!desired.equals("1") && !desired.equals("2")){
+            System.out.println("Please select a valid option:\n");
+            desired=input.nextLine();
         }
+
+        if(desired.equals("1")) {
+            System.out.println("Please enter an IMGUR album link to obtain image URLs from:\n");
+            desired = input.nextLine().replace(" ", "");
+
+            /* Verify the URL is valid. */
+            while (!isLink(desired, true)) {
+                System.out.println("Invalid IMGUR url please try again:\n");
+                desired = input.nextLine().replace(" ", "");
+            }
+            System.out.println("\nFetching links...\n");
+            long startTime = System.currentTimeMillis();
+
+            /* Pull the HTML from the URL. */
+            String html = visitLink(desired);
+
+            /* Find and create each image's URL from the HTML. */
+            int links = findLinks(html);
+
+            long endTime = System.currentTimeMillis();
+            System.out.println("\nFound "+ links + " images in " + (endTime-startTime) +"ms.");
+        }
+        else{
+            System.out.println("Please enter a file name which contains imgur URLs:\n");
+            desired=input.nextLine();
+
+            /* Verify the file exists and is accessible. */
+            while(!isFile(desired)){
+                System.out.println("Invalid file name please try again:\n");
+                desired = input.nextLine();
+            }
+            System.out.println("\nAmending links...\n");
+            int urls = processFile(desired);
+            System.out.println("\n"+urls + " URLS have been amended in " + desired+" and saved to amended"+desired+"!" +"\n");
+        }
+
         input.close();
-        System.out.println("\nFetching links...\n");
-
-        long startTime = System.currentTimeMillis();
-
-        /* Pull the HTML from the URL. */
-        String html = visitLink(desired);
-
-        /* Find and create each image's URL from the HTML. */
-        int links = findLinks(html);
-
-        long endTime = System.currentTimeMillis();
-        System.out.println("\nFound "+ links + " images in " + (endTime-startTime) +"ms.");
     }
 
     /**
@@ -55,7 +80,7 @@ public class ImgurGrabber {
     private static boolean isLink(String url, boolean album) {
         boolean result = false;
         /* REGEX for an imgur single image URL. */
-        String linkFormat = "https://imgur.com/[a-zA-Z0-9]+";
+        String linkFormat = "https://imgur.com/[a-zA-Z0-9]+.png";
 
         /* REGEX for an imgur album URL. */
         String albumFormat = "https://imgur.com/a/\\S+";
@@ -67,6 +92,53 @@ public class ImgurGrabber {
 
         if (url.matches(formats.get(album))) {
             result = true;
+        }
+        return result;
+    }
+
+    /**
+     * Accesses a given text file of image URLs and creates a new text file with the URLs now amended to be
+     * compatible with lensdump uploading.
+     *
+     * @param fileName The file to be accessed.
+     * @return The number of URLs found and amended.
+     */
+    private static int processFile(String fileName){
+        try {
+            ArrayList<String> amended = new ArrayList<>();
+            File file = new File(fileName);
+            Scanner scan = new Scanner(file);
+            while(scan.hasNextLine()){
+                String url = scan.nextLine();
+                url+=".png";
+                amended.add(url);
+            }
+            BufferedWriter bw = new BufferedWriter(
+                    new FileWriter(
+                            new File("amended"+fileName)));
+            for(String s: amended){
+                bw.write(s);
+                bw.newLine();
+            }
+            bw.close();
+            return amended.size();
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    /**
+     * Verifies that a given file name belongs to an existing file and is accessible.
+     * @param toCheck File name to be verified.
+     * @return A Boolean specifying the validity of the file.
+     */
+    private static boolean isFile(String toCheck){
+        boolean result = false;
+        File file = new File(toCheck);
+        if(file.exists() && file.canRead() && file.canWrite() && file.canExecute()){
+            result=true;
         }
         return result;
     }
@@ -102,6 +174,7 @@ public class ImgurGrabber {
      * to obtain a direct URL to the image.
      *
      * @param html A String containing the HTML to be searched.
+     * @return The number of images found in the given HTML.
      */
     private static int findLinks(String html) {
 
@@ -125,6 +198,9 @@ public class ImgurGrabber {
         /* The prefix for which to append a hash value to gain the image's URL. */
         String imgurPrefix = "https://imgur.com/";
 
+        /* Aids in compatibility with other services. */
+        String imageSuffix = ".png";
+
         /* For each image object. */
         for (String object : imageObjects) {
 
@@ -133,7 +209,7 @@ public class ImgurGrabber {
              * Split on quote marks the end of the hash value. This leaves the hash value
              * in the 0 position which can then be appended to the imgurPrefix to gain the image's URL.
              */
-            String url = imgurPrefix + (object.replace(imageRegex, "").split("\"")[0]);
+            String url = imgurPrefix + (object.replace(imageRegex, "").split("\"")[0]+imageSuffix);
 
             /* Verify that the URL is not a duplicate and is a valid imgur link. */
             if (!unique.contains(url) && isLink(url, false)) {
